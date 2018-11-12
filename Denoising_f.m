@@ -4,6 +4,9 @@ function [DenoisedImage] = Denoising_f(testImg, debug)
 % pixels with values bigger than treshold * median with median value.
 % Histogram calculated for clarification purposes. 
 
+% ------------- add [row, col] inputs so that hot pixel finding is not done
+% every time------------
+
 % Variable debug for displaying image histogram and images with and without
 % noise, 1 = display, 0 = do not display
 

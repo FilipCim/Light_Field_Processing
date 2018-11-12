@@ -35,7 +35,6 @@ debug = 1;
     thresh = 5;
     hotPixels = double(testImg).*(testImg > (thresh*medianVal));  
     [row, col] = find(hotPixels); 
-    testImg = testImg;
     testImg(find(hotPixels)) = medianVal;
 
     if debug == 1
