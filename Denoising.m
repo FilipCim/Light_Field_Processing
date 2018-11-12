@@ -4,31 +4,42 @@ close all
 % Denoising scipt that calculates median of whole image and replaces all
 % pixels with values bigger than treshold * median with median value.
 % Histogram calculated for clarification purposes. 
-%%
 
-fileID = '.\data\imagesCamera\Tiff\exps_1_125_iso_1600_image_1.tiff';
-testImg = imread(fileID);
+ImagesDirPath = '.\data\imagesCamera\Tiff\';
 
-%%
-figure()
-imshow(testImg);
-title('Image with noise');
+% variable debug for displaying image histogram and images with and without
+% noise, 1 = display, 0 = do not display
+debug = 0;
 
-[vals, edges, bin] = histcounts(testImg);
-figure()
-stem(edges(1:1:end-1), vals);
-title('Histogram');
+%% Section used for processing whole folder
+% dirList = dir(ImagesDirPath);
+% isFile = ~[dirList.isdir];
+% imageFilenames = {dirList(isFile).name};
 
-% index = find(vals == max(vals));
-% medianVal = edges(index);
+%% Section for processing a single picture
 
-medianVal = median(testImg(:));
-thresh = 5;
-hotPixels = double(testImg).*(testImg > (thresh*medianVal));  
-[row, col] = find(hotPixels); 
-testImg = testImg;
-testImg(find(hotPixels)) = medianVal;
+    testImg = imread([ImagesDirPath, 'exps_1_100_iso_1600_image_1.tiff']);
+    
+    if debug == 1
+        figure()
+        imshow(testImg);
+        title('Image with noise');
+    
+        [vals, edges, bin] = histcounts(testImg);
+        figure()
+        stem(edges(1:1:end-1), vals);
+        title('Histogram');
+    end
 
-figure()
-imshow(testImg);
-title('Image without noise');
+    medianVal = median(testImg(:));
+    thresh = 5;
+    hotPixels = double(testImg).*(testImg > (thresh*medianVal));  
+    [row, col] = find(hotPixels); 
+    testImg = testImg;
+    testImg(find(hotPixels)) = medianVal;
+
+    if debug == 1
+        figure()
+        imshow(testImg);
+        title('Image without noise');
+    end
