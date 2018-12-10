@@ -2,7 +2,7 @@
 %
 % Usage:
 %     [LF, LFMetadata, WhiteImageMetadata, LensletGridModel, DecodeOptions] = ...
-%         LFLytroDecodeImage( InputFname, DecodeOptions )
+%         LFLytroDecodeImage( InputFname, )
 %     [LF, LFMetadata, WhiteImageMetadata, LensletGridModel, DecodeOptions] = ...
 %         LFLytroDecodeImage( InputFname )
 %
