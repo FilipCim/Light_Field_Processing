@@ -117,12 +117,3 @@ imwrite(proba, [imagesCameraDirectoryPathTiff, name,'.tiff']);
 end
 toc
 
-
-
-
-
-
-
-
-
-
