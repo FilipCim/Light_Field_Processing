@@ -256,10 +256,9 @@ title('Estimated vignetting function')
 
 %%
 % Importing white image...
-% imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\whiteScene_all\mpsImagesTest\');
+imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\whiteScene_all\mpsImagesTest\');
 
-% whiteImageScene = imread([imagesCameraDirectoryPath, 'white', '.tiff']);
-whiteImageScene = cutImage;
+whiteImageScene = imread([imagesCameraDirectoryPath, 'white', '.tiff']);
 whiteImageScene = double(whiteImageScene)./double(max(whiteImageScene(:)));
 
 figure()
