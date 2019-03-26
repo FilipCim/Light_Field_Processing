@@ -480,12 +480,9 @@ corrected_measurements = linearizeMeasurements(measurements, measurements, measu
 
 % y = corrected_measurements;
 y = measurements;
-
 ind = 2:30;
 
 y=y(:,:,ind);
-
-
 % reduce measurement matrix to defined number of measurements
 phi_r = phi(ind, :)./sum(phi(ind, :), 2);
 
@@ -556,16 +553,18 @@ waitforbuttonpress
 % This should be done for every PixelView image in the tiled format.
 % Reconstruction is the same, only thing that is different is homography,
 % so MPS should be calculated for every image, but reconstruction shouldn't
-debug = 0;
+debug = 1;
 homograph = 0;
 
-% Prealocating cell 
+% Prealocating cells 
 reconstruction_cell = cell(15,15);
+homography_cell = cell(15,15);
+image_cell = cell(15,15);
 
 % Variable homograph dictates whether or not the (inverse) homography is
 % calculated
 if homograph
-    
+    tic
 % Calculating ROI 
 % Loading unpacked Light Field (here so the unpacking wouldn't be done
 % every time ROI is calculated)
@@ -602,7 +601,7 @@ if (roi_wide(4)+roi_wide(2)) > size(img, 1)
 end
 
 if debug
-        figure(1122)
+        figure(112)
         imshow(img);
         hold on;
         rectangle('Position',...
@@ -610,16 +609,17 @@ if debug
             'EdgeColor','r','LineWidth',2 )
         drawnow
         hold off;
-    end
+end
 
 disp('Found ROI...')
 
-% CALCULATE PER PIXEL CORRESPONDENCES USING MPS FOR SCENE
-
-% Row 1
-for i = 1:1
-    for j = 5:11
+% Calculating homography for all images in tiled format with skipping the
+% corners. Criteria for skipping is the sum of values of all pixels. The
+% threshold is set experimentally (with inspecting images in the corners).
+for i = 1:15
+    for j = 1:15
         tic
+        
         TiledImagePath = '.\data\Scenes\FerScene\mpsImagesTiled\';
         SaveDirPath = '.\data\Scenes\FerScene\mpsImagesTest\';
 
@@ -630,26 +630,34 @@ for i = 1:1
         % For all MPS images and for one pixel view (one tile in tiled image)
         for g = 1:size(imageFilenames, 2)
             image = imread([TiledImagePath, imageFilenames{1,g}]);
-            check = sum(image, :);
-            if check <= 0
+            cutImage = CutTiled_f(image, roi_wide, i, j, 0);
+            image_cell{i,j} = cutImage;
+            check = sum(cutImage(:));
+%             disp(['Check = ',num2str(check)])
+
+            % skipping check
+            if (check <= size(cutImage,1)*size(cutImage,2)*5) && g == 2
+                disp(['Image ',num2str(i),'-',num2str(j),' is skipped because sum of all pixel values is ', num2str(check),'.'])
                 break
             end
-            cutImage = CutTiled_f(image, roi_wide, i, j, 0);
+            
             imwrite(cutImage, [SaveDirPath, imageFilenames{1,g}]);
         end
         
-        if check <= 0
+        % skipping check
+        if check <= size(cutImage,1)*size(cutImage,2)*5 && g == 2
             continue
         end
 
         disp(['Cutting process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-
-
+        
         imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\FerScene\mpsImagesTest\');
 
         [rows, cols, cameraPoints, projectorPoints, ~] = decodeMPS(imagesCameraDirectoryPath, params);
         
         tformProjector2Camera = fitgeotrans(projectorPoints, cameraPoints, 'projective');
+        homography_cell{i,j} = tformProjector2Camera; 
+        
         % Resizing the image so it would fit with the estimated homography
         reconstructionResize = imresize(reconstruction,[params.screenHeight, params.screenWidth]);
         RecImageCameraView = imwarp(reconstructionResize, tformProjector2Camera);
@@ -665,290 +673,21 @@ for i = 1:1
         
         close all
         disp(['Process for MPS image ',num2str(i),'-',num2str(j),' done.'])
+        
         toc
     end 
     
-    if check <= 0
+    % skipping check
+    if check <= size(cutImage,1)*size(cutImage,2)*5 && g == 2
         continue
     end
+    
 end
-
-% Row 2
-for i = 2:2
-    for j = 3:13
-        tic
-        TiledImagePath = '.\data\Scenes\FerScene\mpsImagesTiled\';
-        SaveDirPath = '.\data\Scenes\FerScene\mpsImagesTest\';
-
-        dirList = dir(TiledImagePath);
-        isFile = ~[dirList.isdir];
-        imageFilenames = {dirList(isFile).name};
-
-        % For all MPS images and for one pixel view (one tile in tiled image)
-        for g = 1:size(imageFilenames, 2)
-            image = imread([TiledImagePath, imageFilenames{1,g}]);
-            cutImage = CutTiled_f(image, roi_wide, i, j, 0);
-            imwrite(cutImage, [SaveDirPath, imageFilenames{1,g}]);
-        end
-
-        disp(['Cutting process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-
-
-        imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\FerScene\mpsImagesTest\');
-
-        [rows, cols, cameraPoints, projectorPoints, ~] = decodeMPS(imagesCameraDirectoryPath, params);
-        
-        tformProjector2Camera = fitgeotrans(projectorPoints, cameraPoints, 'projective');
-        % Resizing the image so it would fit with the estimated homography
-        reconstructionResize = imresize(reconstruction,[params.screenHeight, params.screenWidth]);
-        RecImageCameraView = imwarp(reconstructionResize, tformProjector2Camera);
-
-        reconstruction_cell{i,j} = RecImageCameraView;
-        
-        if debug
-            figure,
-            colormap(gray);
-            imagesc(RecImageCameraView)
-            pause;
-        end
-        
-        close all
-        disp(['Process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-        toc
-    end 
-end
-
-% Row 3-4
-for i = 3:4
-    for j = 2:14
-        tic
-        TiledImagePath = '.\data\Scenes\FerScene\mpsImagesTiled\';
-        SaveDirPath = '.\data\Scenes\FerScene\mpsImagesTest\';
-
-        dirList = dir(TiledImagePath);
-        isFile = ~[dirList.isdir];
-        imageFilenames = {dirList(isFile).name};
-
-        % For all MPS images and for one pixel view (one tile in tiled image)
-        for g = 1:size(imageFilenames, 2)
-            image = imread([TiledImagePath, imageFilenames{1,g}]);
-            cutImage = CutTiled_f(image, roi_wide, i, j, 0);
-            imwrite(cutImage, [SaveDirPath, imageFilenames{1,g}]);
-        end
-
-        disp(['Cutting process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-
-
-        imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\FerScene\mpsImagesTest\');
-
-        [rows, cols, cameraPoints, projectorPoints, ~] = decodeMPS(imagesCameraDirectoryPath, params);
-        
-        tformProjector2Camera = fitgeotrans(projectorPoints, cameraPoints, 'projective');
-        % Resizing the image so it would fit with the estimated homography
-        reconstructionResize = imresize(reconstruction,[params.screenHeight, params.screenWidth]);
-        RecImageCameraView = imwarp(reconstructionResize, tformProjector2Camera);
-
-        reconstruction_cell{i,j} = RecImageCameraView;
-        
-        if debug
-            figure,
-            colormap(gray);
-            imagesc(RecImageCameraView)
-            pause;
-        end
-        
-        close all
-        disp(['Process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-        toc
-    end 
-end
-
-% Row 5-11
-for i =  5:11
-    for j = 1:15
-        tic
-        TiledImagePath = '.\data\Scenes\FerScene\mpsImagesTiled\';
-        SaveDirPath = '.\data\Scenes\FerScene\mpsImagesTest\';
-
-        dirList = dir(TiledImagePath);
-        isFile = ~[dirList.isdir];
-        imageFilenames = {dirList(isFile).name};
-
-        % For all MPS images and for one pixel view (one tile in tiled image)
-        for g = 1:size(imageFilenames, 2)
-            image = imread([TiledImagePath, imageFilenames{1,g}]);
-            cutImage = CutTiled_f(image, roi_wide, i, j, 0);
-            imwrite(cutImage, [SaveDirPath, imageFilenames{1,g}]);
-        end
-
-        disp(['Cutting process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-
-
-        imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\FerScene\mpsImagesTest\');
-
-        [rows, cols, cameraPoints, projectorPoints, ~] = decodeMPS(imagesCameraDirectoryPath, params);
-        
-        tformProjector2Camera = fitgeotrans(projectorPoints, cameraPoints, 'projective');
-        % Resizing the image so it would fit with the estimated homography
-        reconstructionResize = imresize(reconstruction,[params.screenHeight, params.screenWidth]);
-        RecImageCameraView = imwarp(reconstructionResize, tformProjector2Camera);
-
-        reconstruction_cell{i,j} = RecImageCameraView;
-        
-        if debug
-            figure,
-            colormap(gray);
-            imagesc(RecImageCameraView)
-            pause;
-        end
-        
-        close all
-        disp(['Process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-        toc
-    end 
-end
-
-% Row 12-13
-for i = 12:13
-    for j = 2:14
-        tic
-        TiledImagePath = '.\data\Scenes\FerScene\mpsImagesTiled\';
-        SaveDirPath = '.\data\Scenes\FerScene\mpsImagesTest\';
-
-        dirList = dir(TiledImagePath);
-        isFile = ~[dirList.isdir];
-        imageFilenames = {dirList(isFile).name};
-
-        % For all MPS images and for one pixel view (one tile in tiled image)
-        for g = 1:size(imageFilenames, 2)
-            image = imread([TiledImagePath, imageFilenames{1,g}]);
-            cutImage = CutTiled_f(image, roi_wide, i, j, 0);
-            imwrite(cutImage, [SaveDirPath, imageFilenames{1,g}]);
-        end
-
-        disp(['Cutting process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-
-
-        imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\FerScene\mpsImagesTest\');
-
-        [rows, cols, cameraPoints, projectorPoints, ~] = decodeMPS(imagesCameraDirectoryPath, params);
-        
-        tformProjector2Camera = fitgeotrans(projectorPoints, cameraPoints, 'projective');
-        % Resizing the image so it would fit with the estimated homography
-        reconstructionResize = imresize(reconstruction,[params.screenHeight, params.screenWidth]);
-        RecImageCameraView = imwarp(reconstructionResize, tformProjector2Camera);
-
-        reconstruction_cell{i,j} = RecImageCameraView;
-        
-        if debug
-            figure,
-            colormap(gray);
-            imagesc(RecImageCameraView)
-            pause;
-        end
-        
-        close all
-        disp(['Process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-        toc
-    end 
-end
-
-% Row 14
-for i = 14:14
-    for j = 3:13
-        tic
-        TiledImagePath = '.\data\Scenes\FerScene\mpsImagesTiled\';
-        SaveDirPath = '.\data\Scenes\FerScene\mpsImagesTest\';
-
-        dirList = dir(TiledImagePath);
-        isFile = ~[dirList.isdir];
-        imageFilenames = {dirList(isFile).name};
-
-        % For all MPS images and for one pixel view (one tile in tiled image)
-        for g = 1:size(imageFilenames, 2)
-            image = imread([TiledImagePath, imageFilenames{1,g}]);
-            cutImage = CutTiled_f(image, roi_wide, i, j, 0);
-            imwrite(cutImage, [SaveDirPath, imageFilenames{1,g}]);
-        end
-
-        disp(['Cutting process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-
-
-        imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\FerScene\mpsImagesTest\');
-
-        [rows, cols, cameraPoints, projectorPoints, ~] = decodeMPS(imagesCameraDirectoryPath, params);
-        
-        tformProjector2Camera = fitgeotrans(projectorPoints, cameraPoints, 'projective');
-        % Resizing the image so it would fit with the estimated homography
-        reconstructionResize = imresize(reconstruction,[params.screenHeight, params.screenWidth]);
-        RecImageCameraView = imwarp(reconstructionResize, tformProjector2Camera);
-
-        reconstruction_cell{i,j} = RecImageCameraView;
-        
-        if debug
-            figure,
-            colormap(gray);
-            imagesc(RecImageCameraView)
-            pause;
-        end
-        
-        close all
-        disp(['Process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-        toc
-    end 
-end
-
-% Row 15
-for i = 15:15
-    for j = 5:11
-        tic
-        TiledImagePath = '.\data\Scenes\FerScene\mpsImagesTiled\';
-        SaveDirPath = '.\data\Scenes\FerScene\mpsImagesTest\';
-
-        dirList = dir(TiledImagePath);
-        isFile = ~[dirList.isdir];
-        imageFilenames = {dirList(isFile).name};
-
-        % For all MPS images and for one pixel view (one tile in tiled image)
-        for g = 1:size(imageFilenames, 2)
-            image = imread([TiledImagePath, imageFilenames{1,g}]);
-            cutImage = CutTiled_f(image, roi_wide, i, j, 0);
-            imwrite(cutImage, [SaveDirPath, imageFilenames{1,g}]);
-        end
-
-        disp(['Cutting process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-
-
-        imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\FerScene\mpsImagesTest\');
-
-        [rows, cols, cameraPoints, projectorPoints, ~] = decodeMPS(imagesCameraDirectoryPath, params);
-        
-        tformProjector2Camera = fitgeotrans(projectorPoints, cameraPoints, 'projective');
-        % Resizing the image so it would fit with the estimated homography
-        reconstructionResize = imresize(reconstruction,[params.screenHeight, params.screenWidth]);
-        RecImageCameraView = imwarp(reconstructionResize, tformProjector2Camera);
-
-        reconstruction_cell{i,j} = RecImageCameraView;
-        
-        if debug
-            figure,
-            colormap(gray);
-            imagesc(RecImageCameraView)
-            pause;
-        end
-        
-        close all
-        disp(['Process for MPS image ',num2str(i),'-',num2str(j),' done.'])
-        disp(['Size of the result image is: ',num2str(size(RecImageCameraView))])
-        disp('=================================================================')
-        toc
-    end 
-end
-save('result.mat', 'reconstruction_cell', 'RecImageCameraView');
-
+    save('result_test.mat','reconstruction_cell','RecImageCameraView','homography_cell','image_cell');
+    
 % Loading the result if homography is already calculated
 else
-load('result.mat', 'reconstruction_cell', 'RecImageCameraView');
+    load('result_test.mat','reconstruction_cell','RecImageCameraView','homography_cell','image_cell');
 end
 
 %% Saving results
@@ -956,37 +695,34 @@ end
 for i = 1:15
     for j = 1:15
         if isempty(reconstruction_cell{i,j})
-%             reconstruction_cell{i,j} = zeros(size(RecImageCameraView,1),size(RecImageCameraView,2));
-                reconstruction_cell{i,j} = zeros(427,456);
+            reconstruction_cell{i,j} = zeros(size(RecImageCameraView,1),size(RecImageCameraView,2));
+%             reconstruction_cell{i,j} = zeros(427,456);
         end
     end
 end
 
+% Resizing all images in cell to same size
 for i = 1:15
     for j = 1:15
-%         reconstruction_cell{i,j} = imresize(reconstruction_cell{i,j}, [size(RecImageCameraView)]);
-reconstruction_cell{i,j} = imresize(reconstruction_cell{i,j}, [427,456]);
+        reconstruction_cell{i,j} = imresize(reconstruction_cell{i,j}, size(RecImageCameraView));
+%         reconstruction_cell{i,j} = imresize(reconstruction_cell{i,j}, [427,456]);
     end
 end
 
 reconstruction_result = cell2mat(reconstruction_cell);
 save('result_matrix.mat', 'reconstruction_result');
-%%
-% preskaliraj od 0 do 1 (0 do 255) i bez skaliranja (10 bitni senzor)
-imwrite(reconstruction_result/2^10,'D:\faks\projekt\script\GitRepository\data\Scenes\result.tiff');
 
-%% XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+imwrite(reconstruction_result,'D:\faks\projekt\script\GitRepository\data\Scenes\result.tiff');
+
+%% Comparing original and warped images
 for i = 1:15
     for j = 1:15
         figure(1)
         colormap gray
-        subplot(121), imagesc(reconstruction_cell{i,j});
+        subplot(121), imshow(reconstruction_cell{i,j}*1.5);
         axis image
-%         subplot(122), imagesc(cell2{i,15-j+1});
-        subplot(122), imagesc(cell2{15-j+1,15-j+1});
-
+        subplot(122), imshow(cell2{i,j}*1.5);
         axis image
-%         drawnow
         waitforbuttonpress
     end 
 end

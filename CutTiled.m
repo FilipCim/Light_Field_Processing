@@ -1,6 +1,5 @@
-debug = 1;
+debug = 0;
 
-if debug
 % Loading unpacked Light Field (here so the unpacking wouldn't be done
 % every time ROI is calculated)
 ROI_image = load('.\data\Scenes\ROI_image2Kosa.mat');
@@ -47,7 +46,6 @@ if debug
     end
 
 disp('Found ROI...')
-end
 
 roi_wide = round(roi_wide);
 
@@ -194,42 +192,37 @@ end
 disp('Done!')
 
 %% For homography testing
-% TiledImagePath = '.\data\Scenes\FerScene\whiteImagesTiled\';
-% SaveDirPath = '.\data\Scenes\FerScene\whiteImagesTest\';
-% 
-% dirList = dir(TiledImagePath);
-% isFile = ~[dirList.isdir];
-% imageFilenames = {dirList(isFile).name};
-% 
-% cell2 = cell(15,15);
-% 
-% % For all images
-% % for g = 1:size(imageFilenames, 2)
-% for g = 2:2
-%     image = imread([TiledImagePath, imageFilenames{1,g}]);
-%     % For all rows
-%     % for i = 1:15
-%     for i = 1:15
-%         % For all columns
-%         % for j= 1:15
-%         for j = 1:15
-%            % cell_cut{g,i,j} = CutTiled_FixMPS_f(image, roi_wide, i, j, 0);
-%            A = CutTiled_f(image, roi_wide, i, j, 0);
-%            cell2{i,j} = A;
-%            % for testing purposes
-% %            imwrite(A, [SaveDirPath, imageFilenames{1,g}]);
+TiledImagePath = '.\data\Scenes\FerScene\whiteImagesTiled\';
+SaveDirPath = '.\data\Scenes\FerScene\whiteImagesTest\';
+
+dirList = dir(TiledImagePath);
+isFile = ~[dirList.isdir];
+imageFilenames = {dirList(isFile).name};
+
+cell2 = cell(15,15);
+
+% For all images
+% for g = 1:size(imageFilenames, 2)
+for g = 2:2
+    image = imread([TiledImagePath, imageFilenames{1,g}]);
+    % For all rows
+    for i = 1:15
+        % For all columns
+        for j = 1:15
+           A = CutTiled_f(image, roi_wide, i, j, 0);
+           cell2{i,j} = A;
 %         figure(1)
 %         imagesc(cell2{i,j});
 %         axis image
 %         waitforbuttonpress
-%         end
-%     end     
-% end
-% 
-% disp('Done!')
+        end
+    end     
+end
+
+disp('Done!')
 
 
-% ========================================================================
+%% ========================================================================
 
 
 % %% Saving test images into a folder, this will not be done in the pipeline

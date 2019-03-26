@@ -1,4 +1,13 @@
+utilities_functions = './utilities';
+mps_functions = './utilities/mps';
+addpath(utilities_functions, mps_functions); 
+currentDirectory = 'D:\faks\projekt\script\GitRepository';
+
+params.screenWidth = 1920;
+params.screenHeight = 1080;
+
 %% Scaling reconstruction
+load('reconstruction7_7.mat');
 reconstruction = mat2gray(reconstruction);
 
 %% INVERSE HOMOGRAPHY
@@ -8,8 +17,8 @@ reconstruction = mat2gray(reconstruction);
 % This should be done for every PixelView image in the tiled format.
 % Reconstruction is the same, only thing that is different is homography,
 % so MPS should be calculated for every image, but reconstruction shouldn't
-debug = 0;
-homograph = 1;
+debug = 1;
+homograph = 0;
 
 % Prealocating cells 
 reconstruction_cell = cell(15,15);
@@ -68,7 +77,6 @@ end
 
 disp('Found ROI...')
 
-% CALCULATE PER PIXEL CORRESPONDENCES USING MPS FOR SCENE
 for i = 1:15
     for j = 1:15
         tic
@@ -141,4 +149,84 @@ end
 % Loading the result if homography is already calculated
 else
     load('result_test.mat','reconstruction_cell','RecImageCameraView','homography_cell','image_cell');
+end
+
+%% %% Testing transformations for homography on 7-7 view in tiled image
+TiledImagePath = '.\data\Scenes\FerScene\mpsImagesTiled\';
+SaveDirPath = '.\data\Scenes\FerScene\mpsImagesTest\';
+
+dirList = dir(TiledImagePath);
+isFile = ~[dirList.isdir];
+imageFilenames = {dirList(isFile).name};
+
+% For all MPS images and for one pixel view (one tile in tiled image)
+for g = 1:size(imageFilenames, 2)
+    image = imread([TiledImagePath, imageFilenames{1,g}]);
+    cutImage = CutTiled_f(image, roi_wide, i, j, 0);            
+    imwrite(cutImage, [SaveDirPath, imageFilenames{1,g}]);
+end
+
+disp(['Cutting process for MPS image ',num2str(i),'-',num2str(j),' done.'])
+
+% MPS
+currentDirectory = 'D:\faks\projekt\script\GitRepository';
+imagesCameraDirectoryPath = fullfile(currentDirectory,'\data\Scenes\FerScene\mpsImagesTest\');
+[rows, cols, cameraPoints, projectorPoints, ~] = decodeMPS(imagesCameraDirectoryPath, params);
+
+
+tformProjector2Camera = fitgeotrans(projectorPoints, cameraPoints, 'projective');
+% Memory fail
+% tformProjector2Camera2 = fitgeotrans(cameraPoints, projectorPoints, 'projective');
+
+% Resizing the image so it would fit with the estimated homography
+% reconstructionResize = imresize(reconstruction,[params.screenHeight, params.screenWidth]);
+% outputView = imref2d(size(reconstruction));
+outputView = imref2d([params.screenHeight, params.screenWidth]);
+
+padsize = [(1080-size(reconstruction,1))/2, (1920-size(reconstruction,2))/2];
+PadReconstruction = padarray(reconstruction, padsize,0,'both');
+
+figure(2)
+colormap gray
+imagesc(PadReconstruction);
+axis image
+
+% Warping
+RecImageCameraView = imwarp(PadReconstruction, tformProjector2Camera);
+% RecImageCameraView = imwarp(ones([params.screenHeight, params.screenWidth]), tformProjector2Camera);
+% RecImageCameraView = imwarp(reconstruction, tformProjector2Camera, 'OutputView',outputView);
+
+figure,
+colormap(gray);
+imagesc(RecImageCameraView)
+axis image
+%% Comparing original and warped images
+load('result_test.mat')
+% Filling black spots with zeros 
+for i = 1:15
+    for j = 1:15
+        if isempty(reconstruction_cell{i,j})
+%           reconstruction_cell{i,j} = zeros(size(RecImageCameraView,1),size(RecImageCameraView,2));
+            reconstruction_cell{i,j} = zeros(427,456);
+        end
+    end
+end
+
+for i = 1:15
+    for j = 1:15
+%       reconstruction_cell{i,j} = imresize(reconstruction_cell{i,j}, [size(RecImageCameraView)]);
+        reconstruction_cell{i,j} = imresize(reconstruction_cell{i,j}, [427,456]);
+    end
+end
+
+for i = 1:15
+    for j = 1:15
+        figure(1)
+        colormap gray
+        subplot(121), imshow(reconstruction_cell{i,j}*1.5);
+        axis image
+        subplot(122), imshow(cell2{i,j}*1.5);
+        axis image
+        waitforbuttonpress
+    end 
 end
